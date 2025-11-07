@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using MyMediator.Interfaces;
 using MyMediator.Types;
 using System;
+using System.Security.Claims;
 using static System.Net.WebRequestMethods;
 
 namespace comp2.CommandList
@@ -40,11 +41,11 @@ namespace comp2.CommandList
     //}
     public class RequestAddCommand : IRequest
     {
-
-        
+        public Claim User { get; set; }
 
         public class RequestAddCommandHandler : IRequestHandler<RequestAddCommand, Unit>
         {
+    
             private readonly ItCompany1135Context db;
             public RequestAddCommandHandler(ItCompany1135Context db)
             {
@@ -54,8 +55,16 @@ namespace comp2.CommandList
 
             public async Task<Unit> HandleAsync(RequestAddCommand request, CancellationToken ct = default)
             {
+                var claim = request.User;
+                if (claim.Type != ClaimValueTypes.Sid)
+                    return Unit.Value;
+
+                var client = db.Clients.Find(claim.Value);
+                if (client == null)
+                    return Unit.Value;
 
 
+                //POST /access-requests ----> Создать запрос на доступ к ресурсу (от текущего пользователя из JWT).
 
                 return Unit.Value;
             }

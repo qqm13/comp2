@@ -17,9 +17,11 @@ namespace comp2.Controllers
         }
 
         [HttpPost("AccesRequest")]
-        public async void AccesRequest()
+        public async Task<ActionResult> AccesRequest()
         {
-            
+            var command = new RequestAddCommand { User = User.Claims.First() };
+            var result = await mediator.SendAsync(command);
+            return Ok(result);
         }
     }
 }

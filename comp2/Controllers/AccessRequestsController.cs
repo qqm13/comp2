@@ -20,8 +20,8 @@ namespace comp2.Controllers
         public async Task<ActionResult> AccesRequest()
         {
             var command = new RequestAddCommand { User = User.Claims.First() };
-            var result = await mediator.SendAsync(command);
-            return Ok(result);
+            await mediator.SendAsync(command);
+            return Ok();
         }
     }
 }

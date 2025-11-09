@@ -39,44 +39,68 @@ namespace comp2.CommandList
     //    PATCH / access - requests /{ id}/ reject---- > Отклонить запрос(только модератор).
     //    GET / access - requests / resource /{ resourceId}/ active---- > Получить активные(утверждённые) запросы на конкретный ресурс.
     //}
-    public class RequestAddCommand : IRequest
+    public class AllUnSeenRequestsCommand : IRequest<IEnumerable<AccessRequestDTO>>
     {
         public Claim User { get; set; }
-        public int ResourceId { get; set; }
 
-        public class RequestAddCommandHandler : IRequestHandler<RequestAddCommand, Unit>
+        public class AllUnSeenRequestsCommandHandler : IRequestHandler<AllUnSeenRequestsCommand, IEnumerable<AccessRequestDTO>>
         {
     
             private readonly ItCompany1135Context db;
-            public RequestAddCommandHandler(ItCompany1135Context db)
+            public AllUnSeenRequestsCommandHandler(ItCompany1135Context db)
             {
                 this.db = db;
             }
 
 
-            public async Task<Unit> HandleAsync(RequestAddCommand request, CancellationToken ct = default)
+            public async Task<IEnumerable<AccessRequestDTO>> HandleAsync(AllUnSeenRequestsCommand request, CancellationToken ct = default)
             {
                 var claim = request.User;
                 if (claim.Type != ClaimValueTypes.Sid)
-                    return Unit.Value;
+                    return new List<AccessRequestDTO>();
 
                 var client = db.Clients.Find(claim.Value);
                 if (client == null)
-                    return Unit.Value;
+                    return new List<AccessRequestDTO>();
 
 
-                //POST /access-requests ----> Создать запрос на доступ к ресурсу (от текущего пользователя из JWT).
+                var role = db.ClientRoles.FirstOrDefault(s => s.ClientId == client.Sid);
 
-                db.AccessRequests.Add(new AccessRequest
+                
+
+                //    GET /access-requests/pending ----> Получить список всех нерассмотренных запросов(только для модераторов/админов).
+
+                if(role.RoleId == 1 || role.RoleId == 2 ) //роль айди админа или модера
                 {
-                    UserSid = client.Sid,
-                    ResourceId = request.ResourceId,
-                    Status = "requested",
-                    ApproverSid = "admin",
-                    RequestedAt = DateTime.UtcNow,
-                });
-                await db.SaveChangesAsync();
-                return Unit.Value;
+                    return db.AccessRequests.Where(s => s.Status == "requested ").Select(s => new AccessRequestDTO //посмотрет ькак называеются статусы
+                    {
+                        UserS = s.UserS,
+                        Status = s.Status,
+                        ApprovedAt = s.ApprovedAt,
+                        ApproverSid = s.ApproverSid,
+                        CreatedAt = s.CreatedAt,
+                        DeletedAt = s.DeletedAt,
+                        ModifiedAt = s.ModifiedAt,
+                        RequestedAt = s.RequestedAt,
+                        CreatedBy = s.CreatedBy,
+                        DeletedBy = s.DeletedBy,
+                        Id = s.Id,
+                        IsDeleted = s.IsDeleted,
+                        ModifiedBy = s.ModifiedBy,
+                        RejectionReason = s.RejectionReason,
+                        Resource = s.Resource,
+                        ResourceId = s.ResourceId,
+                        UserSid = s.UserSid,
+
+                    }).ToList();
+                }
+                else
+                {
+                    return new List<AccessRequestDTO>(); //поменять на вывод соо что не та роль но хз как реализовать
+                }
+
+               
+
             }
         }
     }

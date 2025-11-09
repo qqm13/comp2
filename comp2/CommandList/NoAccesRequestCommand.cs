@@ -39,68 +39,52 @@ namespace comp2.CommandList
     //    PATCH / access - requests /{ id}/ reject---- > Отклонить запрос(только модератор).
     //    GET / access - requests / resource /{ resourceId}/ active---- > Получить активные(утверждённые) запросы на конкретный ресурс.
     //}
-    public class AllUnSeenRequestsCommand : IRequest<IEnumerable<AccessRequestDTO>>
+    public class NoAccesRequestCommand : IRequest
     {
         public Claim User { get; set; }
+        public int RequestId { get; set; }
+        public string RejectionReason { get; set; }
 
-        public class AllUnSeenRequestsCommandHandler : IRequestHandler<AllUnSeenRequestsCommand, IEnumerable<AccessRequestDTO>>
+        public class NoAccesRequestCommandHandler : IRequestHandler<NoAccesRequestCommand, Unit>
         {
     
             private readonly ItCompany1135Context db;
-            public AllUnSeenRequestsCommandHandler(ItCompany1135Context db)
+            public NoAccesRequestCommandHandler(ItCompany1135Context db)
             {
                 this.db = db;
             }
 
 
-            public async Task<IEnumerable<AccessRequestDTO>> HandleAsync(AllUnSeenRequestsCommand request, CancellationToken ct = default)
+            public async Task<Unit> HandleAsync(NoAccesRequestCommand request, CancellationToken ct = default)
             {
                 var claim = request.User;
                 if (claim.Type != ClaimValueTypes.Sid)
-                    return new List<AccessRequestDTO>();
+                    return Unit.Value;
 
                 var client = db.Clients.Find(claim.Value);
                 if (client == null)
-                    return new List<AccessRequestDTO>();
+                    return Unit.Value;
 
 
+                //    PATCH / access - requests /{ id}/ reject---- > Отклонить запрос(только модератор).
                 var role = db.ClientRoles.FirstOrDefault(s => s.ClientId == client.Sid);
 
-                
+                var requestAcces = db.AccessRequests.FirstOrDefault(s => s.Id == request.RequestId);
 
-                //    GET /access-requests/pending ----> Получить список всех нерассмотренных запросов(только для модераторов/админов).
-
-                if(role.RoleId == 1 || role.RoleId == 2 ) //роль айди админа или модера
+                if ( role.RoleId == 2) //роль айди модера
                 {
-                    return db.AccessRequests.Where(s => s.Status == "pending").Select(s => new AccessRequestDTO //посмотрет ькак называеются статусы
-                    {
-                        UserS = s.UserS,
-                        Status = s.Status,
-                        ApprovedAt = s.ApprovedAt,
-                        ApproverSid = s.ApproverSid,
-                        CreatedAt = s.CreatedAt,
-                        DeletedAt = s.DeletedAt,
-                        ModifiedAt = s.ModifiedAt,
-                        RequestedAt = s.RequestedAt,
-                        CreatedBy = s.CreatedBy,
-                        DeletedBy = s.DeletedBy,
-                        Id = s.Id,
-                        IsDeleted = s.IsDeleted,
-                        ModifiedBy = s.ModifiedBy,
-                        RejectionReason = s.RejectionReason,
-                        Resource = s.Resource,
-                        ResourceId = s.ResourceId,
-                        UserSid = s.UserSid,
+                    requestAcces.Status = "Rejected"; //посмотреть навзвание в бд
+                    requestAcces.RejectionReason = request.RejectionReason;
 
-                    }).ToList();
+                    db.AccessRequests.Update(requestAcces);
+                    await db.SaveChangesAsync();
                 }
                 else
                 {
-                    return new List<AccessRequestDTO>(); //поменять на вывод соо что не та роль но хз как реализовать
+                    return Unit.Value; //поменять на вывод соо что не та роль но хз как реализовать
                 }
 
-               
-
+                return Unit.Value;
             }
         }
     }

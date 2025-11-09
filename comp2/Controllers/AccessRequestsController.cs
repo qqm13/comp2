@@ -25,7 +25,7 @@ namespace comp2.Controllers
         }
 
         [HttpPost("AllAccesRequests")]
-        public async Task<IEnumerable<AccessRequestDTO>> AllAccesRequests(int resourceId)
+        public async Task<IEnumerable<AccessRequestDTO>> AllAccesRequests()
         {
             var command = new AllRequestsCommand { User = User.Claims.First() };
             var result = await mediator.SendAsync(command);
@@ -33,11 +33,27 @@ namespace comp2.Controllers
         }
 
         [HttpPost("AllAccesUnseenRequests")]
-        public async Task<IEnumerable<AccessRequestDTO>> AllAccesUnseenRequests(int resourceId)
+        public async Task<IEnumerable<AccessRequestDTO>> AllAccesUnseenRequests()
         {
             var command = new AllUnSeenRequestsCommand { User = User.Claims.First() };
             var result = await mediator.SendAsync(command);
             return result;
+        }
+
+        [HttpPost("RequestYes")]
+        public async Task<ActionResult> RequestYes(int requestId)
+        {
+            var command = new YesAccesRequestCommand { User = User.Claims.First(), RequestId = requestId };
+            await mediator.SendAsync(command);
+            return Ok();
+        }
+
+        [HttpPost("RequestNo")]
+        public async Task<ActionResult> RequestNo(int requestId, string rejectionReason)
+        {
+            var command = new NoAccesRequestCommand { User = User.Claims.First(), RequestId = requestId,  RejectionReason = rejectionReason};
+            await mediator.SendAsync(command);
+            return Ok();
         }
     }
 }
